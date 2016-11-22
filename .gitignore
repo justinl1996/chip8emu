@@ -1,0 +1,10 @@
+*.bin
+*.hex
+*.swp
+*~
+*.o
+*.a
+.svn
+.depend
+*.out
+*.csv
