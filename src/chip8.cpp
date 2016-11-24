@@ -1,9 +1,31 @@
 #include <iostream>
 #include <string>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include "chip8.h"
 
 using namespace std;
+
+unsigned char chip8_fontset[80] =
+{ 
+    0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
+    0x20, 0x60, 0x20, 0x20, 0x70, // 1
+    0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
+    0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
+    0x90, 0x90, 0xF0, 0x10, 0x10, // 4
+    0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
+    0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
+    0xF0, 0x10, 0x20, 0x40, 0x40, // 7
+    0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
+    0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
+    0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+    0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+    0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+    0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+    0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+    0xF0, 0x80, 0xF0, 0x80, 0x80  // F
+};
 
 /*Outputs the 16 register in hexadecimal V0 - VF*/
 void Chip8::outputRegisters()
@@ -34,6 +56,14 @@ Chip8::Chip8()
     this->stpc = 0;
 }
 
+/*Load the font set at the starting at address 0*/
+void Chip8::loadFont() 
+{
+    for (int i = 0; i < 80; i++) {
+        memory[i] = chip8_fontset[i];
+    }
+}
+
 /*Load a chip 8 rom*/
 bool Chip8::loadRom(std::string rom) 
 {
@@ -59,13 +89,13 @@ bool Chip8::loadRom(std::string rom)
     while (1) {
         ch = fgetc(fp);
         memory[PROG_START + i++] = ch;
-        printf("%d: %x\n", i-1, ch);
+        //printf("%d: %x\n", i-1, ch);
 
         if (i == count) {
             break;
         }
-        
     }
+    loadFont();
     return true;
 }
 
@@ -110,6 +140,121 @@ void Chip8::opcode8()
             registers[(opcode & 0x0F00) >> 8] +=  
             registers[(opcode & 0x00F0) >> 4];
             break;
+        case 5:
+            if (registers[(opcode & 0x0F00) >> 8] < 
+                (registers[(opcode & 0x00F0) >> 4])) {
+                registers[0xF] = 0;    
+            } else {
+                registers[0xF] = 1;
+            }
+            registers[opcode & 0x0F00] -= registers[(opcode & 0x00F0) >> 4];
+            break;
+        case 6:
+            registers[0xF] = registers[opcode & 0x0F00] & 1;
+            registers[opcode & 0x0F00] >>= 1; 
+            break;
+        case 7:
+            if (registers[opcode & 0x00F0] < registers[opcode & 0x0F00]) {
+                registers[0xF] = 0;
+            } else {
+                registers[0xF] = 1;
+            }
+            registers[opcode & 0x0F00] = registers[opcode & 0x00F0] - 
+                    registers[opcode & 0x0F00];
+            break;
+        case 8:
+            registers[0xF] = registers[opcode & 0x0F00] & 0x80;
+            registers[0xF] <<= 1;
+            break;
+    }
+}
+
+char Chip8::getKey()
+{
+    const char *valid = "abcdef1234567890";
+    char ch;
+    bool flag = false;
+
+    while(1) {
+        ch = getchar();
+        for (int i = 0; i < (int)strlen(valid); i++) {
+            if (valid[i] == ch) {
+                flag = true;
+                break;
+            }
+        }
+        if (flag) {
+            break;   
+        }
+    }
+    return ch;
+}
+
+void Chip8::opcodeF()
+{
+    switch (opcode & 0x00FF) {
+        case 0x07:
+            registers[(opcode & 0x0F00) >> 8] = delay_timer;
+            break; 
+        case 0x0A:
+            registers[(opcode & 0x0F00) >> 8] = getKey();
+            break;
+        case 0x15:
+            delay_timer = registers[(opcode & 0x0F00) >> 8];
+            sound_timer = registers[(opcode & 0x0F00) >> 8];
+            break;
+        case 0x1E:
+            addr_register += registers[(opcode & 0x0F00) >> 8];
+            break;   
+        case 0x29: {
+            unsigned char character = registers[(opcode & 0x0F00) >> 8];
+            unsigned short loc;
+            if (isdigit(character)) {
+                loc = character - '0';        
+            } else {
+                loc = character - 'A'; 
+            }
+            addr_register = memory[loc * 5];
+            break;
+        }
+        case 0x55: {
+            unsigned short upto = registers[(opcode & 0x0F00) >> 8];
+            for (int i = 0; i < upto; i++, addr_register++) {
+                memory[addr_register] = registers[i];
+            }
+            break;
+        }
+        case 0x65: {
+            unsigned short upto = registers[(opcode & 0x0F00) >> 8];
+            for (int i = 0; i < upto; i++, addr_register++) {
+                registers[i] = memory[addr_register];
+            }
+            break;   
+        }
+    }   
+
+}
+
+/*Execute the draw instruction*/
+void Chip8::drawSprite()
+{
+    unsigned short x = registers[(opcode & 0x0F00) >> 8];
+    unsigned short y = registers[(opcode & 0x00F0) >> 4];
+    unsigned short n = opcode & 0x000F;
+    unsigned char pos = 0;
+    unsigned char state;
+
+    for (int row = 0; row < n; row++) {
+        for (int col = 0; col < 8; col++) {
+            pos = 1 << (7 - col);
+            state = (memory[addr_register] & pos) >> (7 - col);
+
+            if (screen[x + col][y + row] != state) {
+                registers[0xF] = 1;
+            }
+            screen[x + col][y + row] ^= state ;                     
+        }
+        addr_register += 1;
     }
 }
 
@@ -170,10 +315,38 @@ void Chip8::executeCycle()
             opcode8();
             pc += 2;
             break;           
+        case 0x9000:
+            if (registers[(opcode & 0x0F00) >> 8] != 
+                registers[(opcode & 0x00F0) >> 4]) {
+                pc += 4;
+            } else {
+                pc += 2;
+            }
+            break;
+        case 0xA000:
+            addr_register = opcode & 0x0FFF;
+            pc += 2;
+            break;
+        case 0xB000:
+            pc = registers[0] + (opcode & 0x0FFF);
+            break;
+        case 0xC000:
+            registers[(opcode & 0x0F00) >> 8] = (rand() % 256) & (opcode & 0x00FF);  
+            pc += 2;
+            break;
+        case 0xD000:
+            drawSprite();
+            pc += 2;
+            break;
+        case 0xF000:
+            opcodeF();    
+
         default:
             pc += 2;
             break;
     }
-
+    if (delay_timer > 0) {
+        delay_timer--;
+    } 
 }
 

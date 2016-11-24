@@ -7,6 +7,8 @@ int main(int argc, char **argv)
 {
     Chip8 *chip8 = new Chip8();
     chip8->loadRom("MAZE");
+    
+    printf("%x\n", 1 - 5);
      
     while (1) {
 

@@ -16,14 +16,22 @@ public:
 private:
     void clearScreen();
     void opcode8();
+    void opcodeF();
+    void drawSprite();
+    void loadFont();
+    char getKey();
 
     unsigned short pc;
     unsigned short stpc;
     unsigned short stack[16];
-    unsigned short registers[16];
+    unsigned char registers[16];
+    unsigned short addr_register;
     unsigned short opcode; 
     unsigned char memory[MEM_SIZE];
     unsigned char screen[S_WIDTH][S_HEIGHT];
+    unsigned short delay_timer;
+    unsigned short sound_timer;
+
     bool drawFlag;
 };
 
