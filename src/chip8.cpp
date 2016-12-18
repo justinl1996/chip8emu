@@ -1,4 +1,5 @@
 #include <iostream>
+#include <SDL2/SDL.h>
 #include <string>
 #include <stdio.h>
 #include <stdlib.h>
@@ -46,6 +47,11 @@ unsigned short Chip8::getProgramCounter()
 unsigned short Chip8::getOpCode()
 {
     return opcode;
+}
+
+unsigned short Chip8::getI()
+{
+    return addr_register;
 }
 
 /*Constructor*/
@@ -217,6 +223,12 @@ void Chip8::opcodeF()
             addr_register = memory[loc * 5];
             break;
         }
+        case 0x33: 
+            memory[addr_register] = registers[(opcode & 0x0F00) >> 8] / 100;
+            memory[addr_register + 1] = (registers[(opcode & 0x0F00) >> 8] / 
+                    10) % 10;
+            memory[addr_register + 2] = registers[(opcode & 0x0F00) >> 8] % 10;
+            break;
         case 0x55: {
             unsigned short upto = registers[(opcode & 0x0F00) >> 8];
             for (int i = 0; i < upto; i++, addr_register++) {

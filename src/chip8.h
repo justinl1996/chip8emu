@@ -12,6 +12,10 @@ public:
     void outputRegisters();
     unsigned short getProgramCounter();
     unsigned short getOpCode();
+    unsigned short getI();
+    bool drawState() {
+        return drawFlag;
+    };
 
 private:
     void clearScreen();
