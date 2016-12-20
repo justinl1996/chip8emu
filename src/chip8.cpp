@@ -60,6 +60,20 @@ Chip8::Chip8()
     this->drawFlag = 0;
     this->pc = PROG_START;
     this->stpc = 0;
+
+    screen = new unsigned char *[S_WIDTH + 10];
+    for (int x = 0; x < S_WIDTH + 10; x++) {
+        screen[x] = new unsigned char [S_HEIGHT + 10];
+    }
+
+}
+
+Chip8::~Chip8()
+{
+    for (int x = 0; x < S_WIDTH; x++) {
+        delete [] screen[x];
+    }
+    delete screen;
 }
 
 /*Load the font set at the starting at address 0*/
@@ -153,23 +167,23 @@ void Chip8::opcode8()
             } else {
                 registers[0xF] = 1;
             }
-            registers[opcode & 0x0F00] -= registers[(opcode & 0x00F0) >> 4];
+            registers[(opcode & 0x0F00) >> 8] -= registers[(opcode & 0x00F0) >> 4];
             break;
         case 6:
-            registers[0xF] = registers[opcode & 0x0F00] & 1;
-            registers[opcode & 0x0F00] >>= 1; 
+            registers[0xF] = registers[(opcode & 0x0F00) >> 8] & 1;
+            registers[(opcode & 0x0F00) >> 8] >>= 1; 
             break;
         case 7:
-            if (registers[opcode & 0x00F0] < registers[opcode & 0x0F00]) {
+            if (registers[(opcode & 0x00F0) >> 4] < registers[(opcode & 0x0F00) >> 8]) {
                 registers[0xF] = 0;
             } else {
                 registers[0xF] = 1;
             }
-            registers[opcode & 0x0F00] = registers[opcode & 0x00F0] - 
-                    registers[opcode & 0x0F00];
+            registers[(opcode & 0x0F00) >> 8] = registers[(opcode & 0x00F0) >> 4] - 
+                    registers[(opcode & 0x0F00) >> 8];
             break;
-        case 8:
-            registers[0xF] = registers[opcode & 0x0F00] & 0x80;
+        case 0xE:
+            registers[0xF] = registers[(opcode & 0x0F00) >> 8] & 0x80;
             registers[0xF] <<= 1;
             break;
     }
@@ -255,18 +269,18 @@ void Chip8::drawSprite()
     unsigned short n = opcode & 0x000F;
     unsigned char pos = 0;
     unsigned char state;
-
+    
+    registers[0xF] = 0;
     for (int row = 0; row < n; row++) {
         for (int col = 0; col < 8; col++) {
             pos = 1 << (7 - col);
-            state = (memory[addr_register] & pos) >> (7 - col);
+            state = (memory[addr_register + row] & pos) >> (7 - col);
 
             if (screen[x + col][y + row] != state) {
                 registers[0xF] = 1;
-            }
+            } 
             screen[x + col][y + row] ^= state ;                     
         }
-        addr_register += 1;
     }
 }
 
@@ -280,9 +294,11 @@ void Chip8::executeCycle()
             switch (opcode) {
                 case 0x00EE:
                     pc = stack[--stpc];  
+                    pc += 2;
                     break;
                 case 0x00E0:
                     clearScreen();
+                    pc += 2;
                     break;               
             }
             break;
@@ -352,7 +368,6 @@ void Chip8::executeCycle()
             break;
         case 0xF000:
             opcodeF();    
-
         default:
             pc += 2;
             break;

@@ -1,34 +1,33 @@
 #include <iostream>
 #include <vector>
+#include <thread>
 #include "gui.h"
 
 VideoOut::VideoOut(unsigned _width, unsigned _height) : window(NULL), 
         surface(NULL), renderer(NULL), width(_width), height(_height) 
 {
-    screen = new unsigned int *[s_width];
+    /*screen = new unsigned int *[s_width];
     for (int i = 0; i < s_width; i++) {
         screen[i] = new unsigned int[s_height]; 
     }
 
-    clearAll();
+    clearAll();*/
 }
 
-void VideoOut::clearAll()
+/*void VideoOut::clearAll()
 {
-    for (int x = 0; x < S_WIDTH; x++) {
-        for (int y = 0; y < S_HEIGHT; y++) {
+    for (int x = 0; x < s_width; x++) {
+        for (int y = 0; y < s_height; y++) {
             screen[x][y] = 0;   
         }
     }
-}
+}*/
 
 bool VideoOut::init()
 {
     auto disp_err = []() {
         std::cerr << "SDL error: " << SDL_GetError() << std::endl;        
     };
-    screen[0][0] = 1;
-    screen[2][2] = 1;
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
         disp_err();
         return false;
@@ -51,38 +50,38 @@ bool VideoOut::init()
     } else {
         SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
     }
-    return true;
+  return true;
 }
 
-void VideoOut::start() 
+bool VideoOut::draw(unsigned char **screen) 
 {
     SDL_Event e;
     bool quit = false;
-    unsigned short block_width = width/S_WIDTH;
-    unsigned short block_height = height/S_HEIGHT;
+    unsigned short block_width = width/s_width;
+    unsigned short block_height = height/s_height;
 
-    while (!quit) {
-        while (SDL_PollEvent( &e ) != 0 ) {
-            if (e.type == SDL_QUIT) {
-                quit = true;
-            }
+    while (SDL_PollEvent( &e ) != 0 ) {
+        if (e.type == SDL_QUIT) {
+            quit = true;
         }
-
-        SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
-        SDL_RenderClear(renderer);
-
-        SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0x00, 0xFF);
-
-        for (int x = 0; x < S_WIDTH; x++) {
-            for (int y = 0; y < S_HEIGHT; y++) {
-                if (screen[x][y] == 1) {             
-                    SDL_Rect fillRect = {x * block_width, y * block_height, block_width, 
-                            block_height};
-                    SDL_RenderFillRect(renderer, &fillRect);
-                }
-            }
-        }
-
-        SDL_RenderPresent(renderer);
     }
+
+    SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
+    SDL_RenderClear(renderer);
+
+    SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0x00, 0xFF);
+
+    for (int x = 0; x < s_width; x++) {
+        for (int y = 0; y < s_height; y++) {
+            if (screen[x][y] == 1) {             
+                SDL_Rect fillRect = {x * block_width, y * block_height, block_width, 
+                        block_height};
+                SDL_RenderFillRect(renderer, &fillRect);
+            }
+        }
+    }
+
+    SDL_RenderPresent(renderer);
+    return quit;
 }
+

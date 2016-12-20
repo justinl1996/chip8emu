@@ -10,21 +10,21 @@ public:
     ~VideoOut() {
         //SDL_DestroyRenderer(renderer);
         //SDL_DestroyWindow(window);
-        for (int i = 0; i < s_height; i++) {
+        /*for (int i = 0; i < s_height; i++) {
             delete [] screen[i];
         }
-        delete [] screen;
+        delete [] screen;*/
         SDL_Quit();
     }
-    void start();
+    bool draw(unsigned char **);
     bool init();
-    void clearAll();
-    void setCoordinate(unsigned int x, unsigned int y) {
+    //void clearAll();
+    /*void setCoordinate(unsigned int x, unsigned int y) {
         screen[x][y] = 1;
     }
     void clearCoordinate(unsigned int x, unsigned int y) {
         screen[x][y] = 0;
-    }
+    }*/
 private:
     unsigned int width;
     unsigned int height;

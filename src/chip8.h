@@ -7,6 +7,7 @@
 class Chip8 {
 public:
     Chip8();
+    ~Chip8();
     bool loadRom(std::string);
     void executeCycle();
     void outputRegisters();
@@ -15,6 +16,9 @@ public:
     unsigned short getI();
     bool drawState() {
         return drawFlag;
+    };
+    unsigned char **getScreen() {
+        return screen;   
     };
 
 private:
@@ -32,7 +36,7 @@ private:
     unsigned short addr_register;
     unsigned short opcode; 
     unsigned char memory[MEM_SIZE];
-    unsigned char screen[S_WIDTH][S_HEIGHT];
+    unsigned char **screen;
     unsigned short delay_timer;
     unsigned short sound_timer;
 

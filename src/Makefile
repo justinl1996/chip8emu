@@ -5,7 +5,7 @@ SOURCES = $(PROJ).c $(SRCS).c
 INCLUDE= -I.
 
 #Libraries to be added
-LIBS= -lpthread -lX11 -lSDL2 
+LIBS= -lpthread -lX11 -lSDL2
 
 #Compiler Option flags
 CFLAGS=-Wall -std=c++14 
