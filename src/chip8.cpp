@@ -4,8 +4,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "chip8.h"
 
+#include "chip8.h"
+#include "conio.h"
 using namespace std;
 
 unsigned char chip8_fontset[80] =
@@ -54,6 +55,46 @@ unsigned short Chip8::getI()
     return addr_register;
 }
 
+short Chip8::SDLKeyConvert(SDL_Keycode sdlk)
+{
+    switch (sdlk) {
+        case SDLK_0:
+            return 0;
+        case SDLK_1:
+            return 1;           
+        case SDLK_2:
+            return 2;
+        case SDLK_3:
+            return 3;
+        case SDLK_4:
+            return 4;
+        case SDLK_5:
+            return 5;
+        case SDLK_6:
+            return 6;
+        case SDLK_7:
+            return 7; 
+        case SDLK_8:
+            return 8;
+        case SDLK_9:
+            return 9;
+        case SDLK_a:
+            return 0xA;
+        case SDLK_b:
+            return 0xB;
+        case SDLK_c:
+            return 0xC;
+        case SDLK_d:
+            return 0xD;
+        case SDLK_e:
+            return 0xE;
+        case SDLK_f:
+            return 0xF;
+        default:
+            return -1;
+    }
+}
+
 /*Constructor*/
 Chip8::Chip8() 
 {
@@ -65,7 +106,7 @@ Chip8::Chip8()
     for (int x = 0; x < S_WIDTH + 10; x++) {
         screen[x] = new unsigned char [S_HEIGHT + 10];
     }
-
+    memset(keys, 0, sizeof(short) * 15);
 }
 
 Chip8::~Chip8()
@@ -189,37 +230,70 @@ void Chip8::opcode8()
     }
 }
 
-char Chip8::getKey()
+void Chip8::keyInput()
 {
-    const char *valid = "abcdef1234567890";
-    char ch;
-    bool flag = false;
+    short ch;
+    SDL_Event event;
 
-    while(1) {
-        ch = getchar();
-        for (int i = 0; i < (int)strlen(valid); i++) {
-            if (valid[i] == ch) {
-                flag = true;
+    while (SDL_PollEvent(&event)) {
+        switch(event.type) {
+            case SDL_KEYDOWN:
+                //printf( "Key press detected\n" );
+                ch = SDLKeyConvert(event.key.keysym.sym);
+                if (ch >= 0) {
+                    keys[ch] = 1;
+                }
                 break;
-            }
+            case SDL_KEYUP:
+                ch = SDLKeyConvert(event.key.keysym.sym);
+                if (ch >= 0) {
+                    keys[ch] = 0;
+                }
+                break;
+            case SDL_QUIT:
+                SDL_Quit();
+                exit(0);
+            default:
+                break;
         }
-        if (flag) {
-            break;   
+    }
+}
+
+unsigned short Chip8::getKeyBlocking()
+{
+    short ch = -1;
+    while (ch < 0) {
+        SDL_Event event;
+        while (SDL_PollEvent(&event)) {
+            switch(event.type) {
+                case SDL_KEYDOWN:
+                    //printf( "Key press detected\n" );
+                    ch = SDLKeyConvert(event.key.keysym.sym);
+                    break;
+                case SDL_QUIT:
+                    SDL_Quit();
+                    exit(0);
+                default:
+                    break;
+            }
         }
     }
     return ch;
 }
+
 
 void Chip8::opcodeF()
 {
     switch (opcode & 0x00FF) {
         case 0x07:
             registers[(opcode & 0x0F00) >> 8] = delay_timer;
+            printf("DELAY USED\n");
             break; 
         case 0x0A:
-            registers[(opcode & 0x0F00) >> 8] = getKey();
+            registers[(opcode & 0x0F00) >> 8] = getKeyBlocking();
             break;
         case 0x15:
+            printf("DELAY SET\n");
             delay_timer = registers[(opcode & 0x0F00) >> 8];
             sound_timer = registers[(opcode & 0x0F00) >> 8];
             break;
@@ -244,14 +318,14 @@ void Chip8::opcodeF()
             memory[addr_register + 2] = registers[(opcode & 0x0F00) >> 8] % 10;
             break;
         case 0x55: {
-            unsigned short upto = registers[(opcode & 0x0F00) >> 8];
+            unsigned short upto = (opcode & 0x0F00) >> 8;
             for (int i = 0; i < upto; i++, addr_register++) {
                 memory[addr_register] = registers[i];
             }
             break;
         }
         case 0x65: {
-            unsigned short upto = registers[(opcode & 0x0F00) >> 8];
+            unsigned short upto = (opcode & 0x0F00) >> 8;
             for (int i = 0; i < upto; i++, addr_register++) {
                 registers[i] = memory[addr_register];
             }
@@ -294,7 +368,7 @@ void Chip8::executeCycle()
             switch (opcode) {
                 case 0x00EE:
                     pc = stack[--stpc];  
-                    pc += 2;
+                    //pc += 2;
                     break;
                 case 0x00E0:
                     clearScreen();
@@ -306,7 +380,7 @@ void Chip8::executeCycle()
             pc = 0x0FFF & opcode;                      
             break;
         case 0x2000:
-            stack[stpc++] = pc;
+            stack[stpc++] = pc + 2;
             pc = 0x0FFF & opcode;
             break;
         case 0x3000:
@@ -365,6 +439,21 @@ void Chip8::executeCycle()
         case 0xD000:
             drawSprite();
             pc += 2;
+            break;
+        case 0xE000:
+            if ((opcode & 0x00FF) ==  0x009E) {
+                if (keys[registers[(opcode & 0x0F00) >> 8]]) {
+                    pc += 4;
+                } else {
+                    pc += 2;    
+                }
+            } else if ((opcode & 0x00FF) == 0x00A1) {
+                if (!keys[registers[(opcode & 0x0F00) >> 8]]) {
+                    pc += 4;
+                } else {
+                    pc += 2;    
+                }               
+            }
             break;
         case 0xF000:
             opcodeF();    

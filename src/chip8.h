@@ -1,4 +1,5 @@
 #include <iostream>
+#include <SDL2/SDL.h>
 #define MEM_SIZE 4096
 #define PROG_START 0x200
 #define S_WIDTH 64
@@ -10,6 +11,7 @@ public:
     ~Chip8();
     bool loadRom(std::string);
     void executeCycle();
+    void keyInput();
     void outputRegisters();
     unsigned short getProgramCounter();
     unsigned short getOpCode();
@@ -27,11 +29,13 @@ private:
     void opcodeF();
     void drawSprite();
     void loadFont();
-    char getKey();
+    unsigned short getKeyBlocking();
+    short SDLKeyConvert(SDL_Keycode);
 
     unsigned short pc;
     unsigned short stpc;
     unsigned short stack[16];
+    unsigned short keys[15];
     unsigned char registers[16];
     unsigned short addr_register;
     unsigned short opcode; 
